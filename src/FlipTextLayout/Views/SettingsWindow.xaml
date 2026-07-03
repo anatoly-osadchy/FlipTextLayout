@@ -1,0 +1,78 @@
+<Window x:Class="FlipTextLayout.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FlipTextLayout Settings"
+        Width="420"
+        Height="360"
+        ResizeMode="NoResize"
+        WindowStartupLocation="CenterScreen">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="*" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+
+        <TextBlock Text="Hotkey"
+                   FontWeight="SemiBold"
+                   Margin="0,0,0,8" />
+
+        <Border Grid.Row="1"
+                BorderBrush="#DDDDDD"
+                BorderThickness="1"
+                Padding="12"
+                Margin="0,0,0,16">
+            <StackPanel>
+                <WrapPanel Margin="0,0,0,10">
+                    <CheckBox Content="Ctrl"
+                              IsChecked="{Binding Control}"
+                              Margin="0,0,14,0" />
+                    <CheckBox Content="Alt"
+                              IsChecked="{Binding Alt}"
+                              Margin="0,0,14,0" />
+                    <CheckBox Content="Shift"
+                              IsChecked="{Binding Shift}"
+                              Margin="0,0,14,0" />
+                    <CheckBox Content="Win"
+                              IsChecked="{Binding Windows}" />
+                </WrapPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <TextBlock Text="Key"
+                               VerticalAlignment="Center"
+                               Margin="0,0,12,0" />
+                    <TextBox Grid.Column="1"
+                             Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" />
+                </Grid>
+            </StackPanel>
+        </Border>
+
+        <StackPanel Grid.Row="2">
+            <CheckBox Content="Restore clipboard text after conversion"
+                      IsChecked="{Binding RestoreClipboard}"
+                      Margin="0,0,0,10" />
+            <CheckBox Content="Switch Windows keyboard layout after conversion"
+                      IsChecked="{Binding SwitchWindowsKeyboardLayout}"
+                      Margin="0,0,0,10" />
+            <CheckBox Content="Start with Windows"
+                      IsChecked="{Binding StartWithWindows}"
+                      Margin="0,0,0,10" />
+            <CheckBox Content="Play sound after successful conversion"
+                      IsChecked="{Binding PlaySoundAfterConversion}" />
+        </StackPanel>
+
+        <StackPanel Grid.Row="3"
+                    Orientation="Horizontal"
+                    HorizontalAlignment="Right">
+            <Button Content="Cancel"
+                    Command="{Binding CancelCommand}"
+                    Margin="0,0,8,0" />
+            <Button Content="Save"
+                    Command="{Binding SaveCommand}" />
+        </StackPanel>
+    </Grid>
+</Window>
