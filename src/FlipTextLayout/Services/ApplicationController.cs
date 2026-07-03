@@ -1,4 +1,5 @@
 using System.Media;
+using System.ComponentModel;
 using System.Windows;
 using FlipTextLayout.Models;
 using FlipTextLayout.Views;
@@ -76,6 +77,29 @@ public sealed class ApplicationController : IDisposable
         try
         {
             _hotkeyService.Register(settings.Hotkey);
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1409 && !settings.Hotkey.EqualsGesture(HotkeyGesture.Default))
+        {
+            _logger.LogWarning(
+                ex,
+                "Hotkey {Hotkey} is already registered. Falling back to {FallbackHotkey}.",
+                settings.Hotkey,
+                HotkeyGesture.Default);
+
+            settings.Hotkey = HotkeyGesture.Default;
+
+            try
+            {
+                _hotkeyService.Register(settings.Hotkey);
+                _ = _settingsService.SaveAsync(settings, CancellationToken.None);
+            }
+            catch (Exception fallbackEx)
+            {
+                _logger.LogError(
+                    fallbackEx,
+                    "Failed to register fallback hotkey {Hotkey}.",
+                    settings.Hotkey);
+            }
         }
         catch (Exception ex)
         {

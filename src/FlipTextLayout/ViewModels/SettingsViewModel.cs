@@ -9,21 +9,32 @@ namespace FlipTextLayout.ViewModels;
 public sealed class SettingsViewModel : INotifyPropertyChanged
 {
     private readonly ISettingsService _settingsService;
+    private readonly IHotkeyService _hotkeyService;
+    private readonly RelayCommand _saveCommand;
     private bool _control;
     private bool _alt;
     private bool _shift;
     private bool _windows;
-    private string _key = nameof(System.Windows.Input.Key.Space);
+    private string _key = nameof(System.Windows.Input.Key.Q);
     private bool _restoreClipboard;
     private bool _switchWindowsKeyboardLayout;
     private bool _startWithWindows;
     private bool _playSoundAfterConversion;
+    private bool _isHotkeyAvailable;
+    private string _hotkeyStatus = string.Empty;
 
-    public SettingsViewModel(ISettingsService settingsService)
+    public SettingsViewModel(
+        ISettingsService settingsService,
+        IHotkeyService hotkeyService)
     {
         _settingsService = settingsService;
+        _hotkeyService = hotkeyService;
+        _saveCommand = new RelayCommand(async _ => await SaveAsync(), _ => IsHotkeyAvailable);
+
         LoadFromSettings(settingsService.Current);
-        SaveCommand = new RelayCommand(async _ => await SaveAsync());
+        UpdateHotkeyStatus();
+
+        SaveCommand = _saveCommand;
         CancelCommand = new RelayCommand(_ => RequestClose?.Invoke(this, EventArgs.Empty));
     }
 
@@ -34,6 +45,18 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
     public ICommand SaveCommand { get; }
 
     public ICommand CancelCommand { get; }
+
+    public bool IsHotkeyAvailable
+    {
+        get => _isHotkeyAvailable;
+        private set => SetField(ref _isHotkeyAvailable, value);
+    }
+
+    public string HotkeyStatus
+    {
+        get => _hotkeyStatus;
+        private set => SetField(ref _hotkeyStatus, value);
+    }
 
     public bool Control
     {
@@ -91,6 +114,13 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
     private async Task SaveAsync()
     {
+        UpdateHotkeyStatus();
+
+        if (!IsHotkeyAvailable)
+        {
+            return;
+        }
+
         AppSettings settings = new()
         {
             Hotkey = new HotkeyGesture
@@ -133,6 +163,59 @@ public sealed class SettingsViewModel : INotifyPropertyChanged
 
         field = value;
         PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+
+        if (IsHotkeyProperty(propertyName))
+        {
+            UpdateHotkeyStatus();
+        }
+
         return true;
+    }
+
+    private void UpdateHotkeyStatus()
+    {
+        if (!Enum.TryParse(Key, ignoreCase: true, out Key _))
+        {
+            IsHotkeyAvailable = false;
+            HotkeyStatus = "Unknown key name.";
+            _saveCommand.RaiseCanExecuteChanged();
+            return;
+        }
+
+        HotkeyGesture hotkey = BuildHotkey();
+
+        if (_hotkeyService.IsHotkeyAvailable(hotkey))
+        {
+            IsHotkeyAvailable = true;
+            HotkeyStatus = "Hotkey is available.";
+        }
+        else
+        {
+            IsHotkeyAvailable = false;
+            HotkeyStatus = "Hotkey is already in use.";
+        }
+
+        _saveCommand.RaiseCanExecuteChanged();
+    }
+
+    private HotkeyGesture BuildHotkey()
+    {
+        return new HotkeyGesture
+        {
+            Control = Control,
+            Alt = Alt,
+            Shift = Shift,
+            Windows = Windows,
+            Key = Key
+        };
+    }
+
+    private static bool IsHotkeyProperty(string? propertyName)
+    {
+        return propertyName is nameof(Control)
+            or nameof(Alt)
+            or nameof(Shift)
+            or nameof(Windows)
+            or nameof(Key);
     }
 }

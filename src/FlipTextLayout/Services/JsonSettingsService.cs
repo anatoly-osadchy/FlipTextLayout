@@ -44,7 +44,12 @@ public sealed class JsonSettingsService : ISettingsService
                 cancellationToken);
 
             Current = settings ?? new AppSettings();
-            Normalize(Current);
+
+            if (Normalize(Current))
+            {
+                await SaveFileAsync(Current, cancellationToken);
+            }
+
             return Current;
         }
         catch (Exception ex)
@@ -71,11 +76,22 @@ public sealed class JsonSettingsService : ISettingsService
         await JsonSerializer.SerializeAsync(stream, settings, JsonOptions, cancellationToken);
     }
 
-    private static void Normalize(AppSettings settings)
+    private static bool Normalize(AppSettings settings)
     {
+        bool changed = false;
+
         if (string.IsNullOrWhiteSpace(settings.Hotkey.Key))
         {
             settings.Hotkey.Key = HotkeyGesture.Default.Key;
+            changed = true;
         }
+
+        if (settings.Hotkey.EqualsGesture(HotkeyGesture.LegacyDefault))
+        {
+            settings.Hotkey = HotkeyGesture.Default;
+            changed = true;
+        }
+
+        return changed;
     }
 }

@@ -9,8 +9,10 @@ namespace FlipTextLayout.Services;
 public sealed class HotkeyService : IHotkeyService
 {
     private const int HotkeyId = 0x464C;
+    private const int TestHotkeyId = 0x464D;
     private const int WmHotkey = 0x0312;
     private readonly HwndSource _source;
+    private HotkeyGesture? _registeredHotkey;
     private bool _registered;
     private bool _disposed;
 
@@ -31,22 +33,48 @@ public sealed class HotkeyService : IHotkeyService
 
     public void Register(HotkeyGesture hotkey)
     {
-        Unregister();
-
-        uint modifiers = BuildModifiers(hotkey);
-        int virtualKey = KeyInterop.VirtualKeyFromKey(hotkey.ParsedKey);
-
-        if (virtualKey == 0)
+        if (_registeredHotkey?.EqualsGesture(hotkey) == true)
         {
-            throw new InvalidOperationException($"Unsupported hotkey key: {hotkey.Key}");
+            return;
         }
 
-        if (!RegisterHotKey(_source.Handle, HotkeyId, modifiers, (uint)virtualKey))
+        HotkeyNativeValues values = GetNativeValues(hotkey);
+
+        if (!TryRegisterTestHotkey(values, out int errorCode))
+        {
+            throw new Win32Exception(errorCode, $"Failed to register hotkey {hotkey}.");
+        }
+
+        Unregister();
+
+        if (!RegisterHotKey(_source.Handle, HotkeyId, values.Modifiers, values.VirtualKey))
         {
             throw new Win32Exception(Marshal.GetLastWin32Error(), $"Failed to register hotkey {hotkey}.");
         }
 
+        _registeredHotkey = Clone(hotkey);
         _registered = true;
+    }
+
+    public bool IsHotkeyAvailable(HotkeyGesture hotkey)
+    {
+        if (_registeredHotkey?.EqualsGesture(hotkey) == true)
+        {
+            return true;
+        }
+
+        HotkeyNativeValues values;
+
+        try
+        {
+            values = GetNativeValues(hotkey);
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
+        }
+
+        return TryRegisterTestHotkey(values, out _);
     }
 
     public void Unregister()
@@ -58,6 +86,7 @@ public sealed class HotkeyService : IHotkeyService
 
         UnregisterHotKey(_source.Handle, HotkeyId);
         _registered = false;
+        _registeredHotkey = null;
     }
 
     public void Dispose()
@@ -111,9 +140,55 @@ public sealed class HotkeyService : IHotkeyService
         return modifiers;
     }
 
+    private HotkeyNativeValues GetNativeValues(HotkeyGesture hotkey)
+    {
+        uint modifiers = BuildModifiers(hotkey);
+
+        if (!Enum.TryParse(hotkey.Key, ignoreCase: true, out Key parsedKey))
+        {
+            throw new InvalidOperationException($"Unsupported hotkey key: {hotkey.Key}");
+        }
+
+        int virtualKey = KeyInterop.VirtualKeyFromKey(parsedKey);
+
+        if (virtualKey == 0)
+        {
+            throw new InvalidOperationException($"Unsupported hotkey key: {hotkey.Key}");
+        }
+
+        return new HotkeyNativeValues(modifiers, (uint)virtualKey);
+    }
+
+    private bool TryRegisterTestHotkey(HotkeyNativeValues values, out int errorCode)
+    {
+        if (!RegisterHotKey(_source.Handle, TestHotkeyId, values.Modifiers, values.VirtualKey))
+        {
+            errorCode = Marshal.GetLastWin32Error();
+            return false;
+        }
+
+        UnregisterHotKey(_source.Handle, TestHotkeyId);
+        errorCode = 0;
+        return true;
+    }
+
+    private static HotkeyGesture Clone(HotkeyGesture hotkey)
+    {
+        return new HotkeyGesture
+        {
+            Control = hotkey.Control,
+            Alt = hotkey.Alt,
+            Shift = hotkey.Shift,
+            Windows = hotkey.Windows,
+            Key = hotkey.Key
+        };
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+    private sealed record HotkeyNativeValues(uint Modifiers, uint VirtualKey);
 }

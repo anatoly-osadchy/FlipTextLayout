@@ -2,7 +2,7 @@
 
 Small Windows tray utility for fixing text typed with the wrong English/Russian keyboard layout.
 
-Default hotkey: `Ctrl + Shift + Space`.
+Default hotkey: `Ctrl + Alt + Q`.
 
 ## Features
 

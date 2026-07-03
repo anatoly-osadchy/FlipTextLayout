@@ -3,7 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="FlipTextLayout Settings"
         Width="420"
-        Height="360"
+        Height="380"
         ResizeMode="NoResize"
         WindowStartupLocation="CenterScreen">
     <Grid Margin="16">
@@ -48,6 +48,8 @@
                     <TextBox Grid.Column="1"
                              Text="{Binding Key, UpdateSourceTrigger=PropertyChanged}" />
                 </Grid>
+                <TextBlock Text="{Binding HotkeyStatus}"
+                           Margin="0,10,0,0" />
             </StackPanel>
         </Border>
 

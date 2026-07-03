@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using System.Windows.Input;
 
 namespace FlipTextLayout.Models;
@@ -20,6 +21,13 @@ public sealed class HotkeyGesture
     public static HotkeyGesture Default => new()
     {
         Control = true,
+        Alt = true,
+        Key = nameof(System.Windows.Input.Key.Q)
+    };
+
+    public static HotkeyGesture LegacyDefault => new()
+    {
+        Control = true,
         Shift = true,
         Key = nameof(System.Windows.Input.Key.Space)
     };
@@ -34,6 +42,7 @@ public sealed class HotkeyGesture
 
     public string Key { get; set; } = nameof(System.Windows.Input.Key.Space);
 
+    [JsonIgnore]
     public Key ParsedKey
     {
         get
@@ -45,6 +54,15 @@ public sealed class HotkeyGesture
 
             return System.Windows.Input.Key.Space;
         }
+    }
+
+    public bool EqualsGesture(HotkeyGesture other)
+    {
+        return Control == other.Control
+            && Alt == other.Alt
+            && Shift == other.Shift
+            && Windows == other.Windows
+            && ParsedKey == other.ParsedKey;
     }
 
     public override string ToString()

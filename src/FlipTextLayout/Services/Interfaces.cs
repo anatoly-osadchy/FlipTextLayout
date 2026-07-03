@@ -24,6 +24,8 @@ public interface IHotkeyService : IDisposable
 
     void Register(HotkeyGesture hotkey);
 
+    bool IsHotkeyAvailable(HotkeyGesture hotkey);
+
     void Unregister();
 }
 
