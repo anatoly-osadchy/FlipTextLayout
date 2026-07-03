@@ -58,4 +58,9 @@ public sealed class TrayIconService : ITrayIconService
 
         _disposed = true;
     }
+
+    public void ShowMessage(string title, string message)
+    {
+        _notifyIcon?.ShowBalloonTip(2500, title, message, ToolTipIcon.Info);
+    }
 }

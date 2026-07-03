@@ -31,6 +31,11 @@ public interface IHotkeyService : IDisposable
 
 public interface IKeyboardService
 {
+    Task<bool> WaitForHotkeyReleaseAsync(
+        HotkeyGesture hotkey,
+        TimeSpan timeout,
+        CancellationToken cancellationToken);
+
     void SendCopy();
 
     Task SendPasteAsync(CancellationToken cancellationToken);
@@ -60,6 +65,8 @@ public interface ITrayIconService : IDisposable
         Func<Task> switchLayoutAsync,
         Action showSettings,
         Action exit);
+
+    void ShowMessage(string title, string message);
 }
 
 public interface IWindowsStartupService

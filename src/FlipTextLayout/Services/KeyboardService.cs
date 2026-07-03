@@ -1,5 +1,6 @@
 using System.Runtime.InteropServices;
 using FlipTextLayout.Models;
+using System.Windows.Input;
 
 namespace FlipTextLayout.Services;
 
@@ -12,6 +13,31 @@ public sealed class KeyboardService : IKeyboardService
     private const uint WmInputLangChangeRequest = 0x0050;
     private const string EnglishLayoutId = "00000409";
     private const string RussianLayoutId = "00000419";
+    private const int VkShift = 0x10;
+    private const int VkMenu = 0x12;
+    private const int VkLWin = 0x5B;
+    private const int VkRWin = 0x5C;
+
+    public async Task<bool> WaitForHotkeyReleaseAsync(
+        HotkeyGesture hotkey,
+        TimeSpan timeout,
+        CancellationToken cancellationToken)
+    {
+        DateTime deadline = DateTime.UtcNow + timeout;
+        int keyVirtualCode = KeyInterop.VirtualKeyFromKey(hotkey.ParsedKey);
+
+        while (DateTime.UtcNow < deadline)
+        {
+            if (!IsHotkeyPressed(hotkey, keyVirtualCode))
+            {
+                return true;
+            }
+
+            await Task.Delay(TimeSpan.FromMilliseconds(20), cancellationToken);
+        }
+
+        return false;
+    }
 
     public void SendCopy()
     {
@@ -73,6 +99,41 @@ public sealed class KeyboardService : IKeyboardService
         }
     }
 
+    private static bool IsHotkeyPressed(HotkeyGesture hotkey, int keyVirtualCode)
+    {
+        if (keyVirtualCode != 0 && IsKeyDown(keyVirtualCode))
+        {
+            return true;
+        }
+
+        if (hotkey.Control && IsKeyDown(VkControl))
+        {
+            return true;
+        }
+
+        if (hotkey.Alt && IsKeyDown(VkMenu))
+        {
+            return true;
+        }
+
+        if (hotkey.Shift && IsKeyDown(VkShift))
+        {
+            return true;
+        }
+
+        if (hotkey.Windows && (IsKeyDown(VkLWin) || IsKeyDown(VkRWin)))
+        {
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool IsKeyDown(int virtualKey)
+    {
+        return (GetAsyncKeyState(virtualKey) & 0x8000) != 0;
+    }
+
     [DllImport("user32.dll", SetLastError = true)]
     private static extern uint SendInput(uint numberOfInputs, Input[] inputs, int size);
 
@@ -84,6 +145,9 @@ public sealed class KeyboardService : IKeyboardService
 
     [DllImport("user32.dll", SetLastError = true)]
     private static extern bool PostMessage(IntPtr hWnd, uint msg, IntPtr wParam, IntPtr lParam);
+
+    [DllImport("user32.dll")]
+    private static extern short GetAsyncKeyState(int virtualKey);
 
     [StructLayout(LayoutKind.Sequential)]
     private struct Input

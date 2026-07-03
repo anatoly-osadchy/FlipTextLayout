@@ -11,6 +11,7 @@ namespace FlipTextLayout.Services;
 public sealed class ApplicationController : IDisposable
 {
     private static readonly TimeSpan ClipboardTimeout = TimeSpan.FromMilliseconds(1200);
+    private static readonly TimeSpan HotkeyReleaseTimeout = TimeSpan.FromMilliseconds(900);
     private readonly IServiceProvider _services;
     private readonly ISettingsService _settingsService;
     private readonly IWindowsStartupService _startupService;
@@ -134,6 +135,20 @@ public sealed class ApplicationController : IDisposable
             AppSettings settings = _settingsService.Current;
             shouldRestore = settings.RestoreClipboard;
 
+            bool hotkeyReleased = await _keyboardService.WaitForHotkeyReleaseAsync(
+                settings.Hotkey,
+                HotkeyReleaseTimeout,
+                CancellationToken.None);
+
+            if (!hotkeyReleased)
+            {
+                _trayIconService.ShowMessage(
+                    "FlipTextLayout",
+                    "Release the hotkey before conversion starts.");
+
+                return;
+            }
+
             if (_clipboardService.ContainsText())
             {
                 previousText = _clipboardService.GetText();
@@ -149,11 +164,19 @@ public sealed class ApplicationController : IDisposable
 
             if (!changed)
             {
+                _trayIconService.ShowMessage(
+                    "FlipTextLayout",
+                    "No clipboard change after Ctrl+C. Select text and try again.");
+
                 return;
             }
 
             if (!_clipboardService.ContainsText())
             {
+                _trayIconService.ShowMessage(
+                    "FlipTextLayout",
+                    "The copied clipboard content is not text.");
+
                 return;
             }
 
@@ -161,6 +184,10 @@ public sealed class ApplicationController : IDisposable
 
             if (string.IsNullOrEmpty(selectedText))
             {
+                _trayIconService.ShowMessage(
+                    "FlipTextLayout",
+                    "The copied text is empty.");
+
                 return;
             }
 
@@ -168,6 +195,10 @@ public sealed class ApplicationController : IDisposable
 
             if (!result.Changed)
             {
+                _trayIconService.ShowMessage(
+                    "FlipTextLayout",
+                    "The copied text does not match the configured layout mapping.");
+
                 return;
             }
 
