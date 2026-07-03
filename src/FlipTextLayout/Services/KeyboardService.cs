@@ -9,6 +9,7 @@ public sealed class KeyboardService : IKeyboardService
     private const ushort VkControl = 0x11;
     private const ushort VkC = 0x43;
     private const ushort VkV = 0x56;
+    private const uint InputKeyboard = 1;
     private const uint KeyEventKeyUp = 0x0002;
     private const uint WmInputLangChangeRequest = 0x0050;
     private const string EnglishLayoutId = "00000409";
@@ -95,7 +96,8 @@ public sealed class KeyboardService : IKeyboardService
 
         if (sent != inputs.Length)
         {
-            throw new InvalidOperationException("SendInput failed.");
+            int errorCode = Marshal.GetLastWin32Error();
+            throw new InvalidOperationException($"SendInput failed with error code {errorCode}.");
         }
     }
 
@@ -154,16 +156,19 @@ public sealed class KeyboardService : IKeyboardService
     {
         public uint Type;
 
-        public KeyboardInput KeyboardInput;
+        public InputUnion Data;
 
         public static Input KeyDown(ushort key)
         {
             return new Input
             {
-                Type = 1,
-                KeyboardInput = new KeyboardInput
+                Type = InputKeyboard,
+                Data = new InputUnion
                 {
-                    VirtualKey = key
+                    KeyboardInput = new KeyboardInput
+                    {
+                        VirtualKey = key
+                    }
                 }
             };
         }
@@ -172,14 +177,46 @@ public sealed class KeyboardService : IKeyboardService
         {
             return new Input
             {
-                Type = 1,
-                KeyboardInput = new KeyboardInput
+                Type = InputKeyboard,
+                Data = new InputUnion
                 {
-                    VirtualKey = key,
-                    Flags = KeyEventKeyUp
+                    KeyboardInput = new KeyboardInput
+                    {
+                        VirtualKey = key,
+                        Flags = KeyEventKeyUp
+                    }
                 }
             };
         }
+    }
+
+    [StructLayout(LayoutKind.Explicit)]
+    private struct InputUnion
+    {
+        [FieldOffset(0)]
+        public MouseInput MouseInput;
+
+        [FieldOffset(0)]
+        public KeyboardInput KeyboardInput;
+
+        [FieldOffset(0)]
+        public HardwareInput HardwareInput;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct MouseInput
+    {
+        public int X;
+
+        public int Y;
+
+        public uint MouseData;
+
+        public uint Flags;
+
+        public uint Time;
+
+        public IntPtr ExtraInfo;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -194,5 +231,15 @@ public sealed class KeyboardService : IKeyboardService
         public uint Time;
 
         public IntPtr ExtraInfo;
+    }
+
+    [StructLayout(LayoutKind.Sequential)]
+    private struct HardwareInput
+    {
+        public uint Message;
+
+        public ushort LowParameter;
+
+        public ushort HighParameter;
     }
 }
